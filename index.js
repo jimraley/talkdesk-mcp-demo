@@ -179,7 +179,7 @@ app.post("/mcp", async (req, res) => {
         }
 
         const stockRes = await fetch(
-          `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(symbol)}&apikey=demo`
+          `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(symbol)}&apikey=CEW9VQILKSPTQNTC`
         );
         const stockData = await stockRes.json();
         const quote = stockData["Global Quote"];
