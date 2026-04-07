@@ -85,42 +85,66 @@ app.post("/call", async (req, res) => {
 });
 
 app.post("/mcp", async (req, res) => {
-  const { method, params } = req.body;
+  const { method, params, id } = req.body;
 
   try {
+    // REQUIRED handshake
+    if (method === "initialize") {
+      return res.json({
+        jsonrpc: "2.0",
+        id,
+        result: {
+          protocolVersion: "2024-11-05",
+          capabilities: {
+            tools: {}
+          },
+          serverInfo: {
+            name: "railway-mcp-demo",
+            version: "1.0.0"
+          }
+        }
+      });
+    }
+
     // Tool discovery
     if (method === "tools/list") {
       return res.json({
-        tools: [
-          {
-            name: "get_weather",
-            description: "Get current weather by zip code",
-            inputSchema: {
-              type: "object",
-              properties: {
-                zip: { type: "string" }
-              },
-              required: ["zip"]
+        jsonrpc: "2.0",
+        id,
+        result: {
+          tools: [
+            {
+              name: "get_weather",
+              description: "Get current weather by zip code",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  zip: { type: "string" }
+                },
+                required: ["zip"]
+              }
+            },
+            {
+              name: "get_stock_price",
+              description: "Get stock price by symbol",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  symbol: { type: "string" }
+                },
+                required: ["symbol"]
+              }
             }
-          },
-          {
-            name: "get_stock_price",
-            description: "Get stock price by symbol",
-            inputSchema: {
-              type: "object",
-              properties: {
-                symbol: { type: "string" }
-              },
-              required: ["symbol"]
-            }
-          }
-        ]
+          ]
+        }
       });
     }
 
     // Tool execution
     if (method === "tools/call") {
       const { name, arguments: args } = params;
+
+      let resultText = "";
 
       if (name === "get_weather") {
         const geoRes = await fetch(
@@ -135,14 +159,7 @@ app.post("/mcp", async (req, res) => {
         );
         const weatherData = await weatherRes.json();
 
-        return res.json({
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(weatherData.current_weather)
-            }
-          ]
-        });
+        resultText = JSON.stringify(weatherData.current_weather);
       }
 
       if (name === "get_stock_price") {
@@ -151,16 +168,43 @@ app.post("/mcp", async (req, res) => {
         );
         const stockData = await stockRes.json();
 
-        return res.json({
+        resultText = JSON.stringify(stockData["Global Quote"]);
+      }
+
+      return res.json({
+        jsonrpc: "2.0",
+        id,
+        result: {
           content: [
             {
               type: "text",
-              text: JSON.stringify(stockData["Global Quote"])
+              text: resultText
             }
           ]
-        });
-      }
+        }
+      });
     }
+
+    return res.json({
+      jsonrpc: "2.0",
+      id,
+      error: {
+        code: -32601,
+        message: "Method not found"
+      }
+    });
+
+  } catch (err) {
+    return res.json({
+      jsonrpc: "2.0",
+      id,
+      error: {
+        code: -32603,
+        message: err.message
+      }
+    });
+  }
+});
 
     return res.status(400).json({ error: "Unknown method" });
 
